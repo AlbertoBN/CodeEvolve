@@ -53,7 +53,7 @@ namespace Server
 
                     RaiseDataEvent(msg);
 
-                    Thread.Sleep(10);
+                    Thread.Sleep(1000);
                 }
             }, _src.Token);
         }
