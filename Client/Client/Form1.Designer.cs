@@ -44,9 +44,9 @@
             // _dataDisplay
             // 
             this._dataDisplay.FormattingEnabled = true;
-            this._dataDisplay.Location = new System.Drawing.Point(12, 42);
+            this._dataDisplay.Location = new System.Drawing.Point(16, 44);
             this._dataDisplay.Name = "_dataDisplay";
-            this._dataDisplay.Size = new System.Drawing.Size(733, 277);
+            this._dataDisplay.Size = new System.Drawing.Size(715, 303);
             this._dataDisplay.TabIndex = 1;
             // 
             // Form1

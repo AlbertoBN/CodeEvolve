@@ -12,5 +12,6 @@ namespace Messages
         public Guid MessageId{ get; set;} 
         public string MessageData { get; set; }
         public int MessageNumber { get; set; }
+        public DateTime MessageTime { get; set; }
     }
 }
