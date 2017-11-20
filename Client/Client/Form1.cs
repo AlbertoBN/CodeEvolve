@@ -10,60 +10,29 @@ using System.Diagnostics;
 namespace Client
 {
     public partial class Form1 : Form
-    {        
+    {
         private object _locker;
         private List<DataMessage> _dataMessageList;
-        private Thread _consumeThread;
-        
+
         public Form1()
         {
             InitializeComponent();
             Load += Form1_Load;
-            _locker = new object();
-            _dataMessageList = new List<DataMessage>();
         }
 
         private void Form1_Load(object sender, EventArgs e)
         {
-            _consumeThread = new Thread(ProcessDataMessages);
-            _consumeThread.Start();
         }
 
-        private void ProcessDataMessages()
+        public void PrintMessage(string msg)
         {
-            while (true)
+            this.Invoke((MethodInvoker)(() =>
             {
-                List<DataMessage> tmpList;
-                lock (_dataMessageList)
-                {
-                    tmpList = _dataMessageList.ToList();
-                    _dataMessageList.Clear();
-                }
+                _dataDisplay.Items.Add(msg);
 
-                foreach(DataMessage msg in tmpList)
-                {
-                    //simulating processing time before showing data
-                   Thread.Sleep(1000);
-                   this.Invoke((MethodInvoker)(() =>
-                   {
-                     
-                       _dataDisplay.Items.Add($"{msg.MessageId} - {msg.MessageTime.ToShortTimeString()}");
+            }));
 
-                   }));
-                    
-                }
-                tmpList.Clear();
-            }
-        }
-
-        public void ConsumeData(object sender, DataEventArgs e)
-        {
-            lock (_dataMessageList)
-            {
-                _dataMessageList.AddRange(e.Data.ToList());
-                e.Data.Clear();
-               
-            }
         }
     }
 }
+
