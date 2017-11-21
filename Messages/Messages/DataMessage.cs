@@ -13,7 +13,7 @@ namespace Messages
         public string MessageData { get; set; }
         public int MessageNumber { get; set; }
         public DateTime MessageTime { get; set; }
-        public string ProducerId { get; set; }
+        public Guid ProducerId { get; set; }
         
         public override string ToString()
         {

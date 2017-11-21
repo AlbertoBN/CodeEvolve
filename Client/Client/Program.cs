@@ -32,7 +32,7 @@ namespace Client
             var dataFlowChain = CreateDataFlowComponentsChain( form);
             _producers = new List<Producer>();
 
-            for (int i = 0; i <= 1; i++)
+            for (int i = 0; i <= SystemSettings.NumberOfProducers; i++)
             {
                 Producer producer = new Producer();
                 
@@ -49,11 +49,11 @@ namespace Client
             //Build the blocks for the pipeline
 
             //First a batch block to receive and push producer data
-            var dataPusher = new BatchBlock<DataMessage>(10);
+            var dataPusher = new BatchBlock<DataMessage>(SystemSettings.BatchBlockBufferSize);
 
             ConcurrentDictionary<string, List<DataMessage>> groupedMessages = new ConcurrentDictionary<string, List<DataMessage>>();
             ExecutionDataflowBlockOptions exdbo = new ExecutionDataflowBlockOptions();
-            exdbo.MaxDegreeOfParallelism = 1;
+            exdbo.MaxDegreeOfParallelism = SystemSettings.MaxDegreeOfParallelism;
    
             var dataGrouper = new TransformBlock<DataMessage[], List<List<DataMessage>>>(msgList =>
             {

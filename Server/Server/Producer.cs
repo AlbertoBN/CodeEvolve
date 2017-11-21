@@ -1,6 +1,5 @@
 ﻿using Messages;
-using System;
-using System.Collections.Generic;
+using System.Configuration;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -15,7 +14,7 @@ namespace Server
         public void Produce(BatchBlock<DataMessage> batchBlock)
         {
             _src = new CancellationTokenSource();
-
+            Guid producerId = Guid.NewGuid();
             Task t = Task.Factory.StartNew(() =>
             {
                 Random rand = new Random((int)DateTime.Now.Ticks);
@@ -29,9 +28,9 @@ namespace Server
                     msg.MessageData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ";
                     msg.MessageNumber = rand.Next(int.MinValue, int.MaxValue);
                     msg.MessageTime = DateTime.Now;
-
+                    msg.ProducerId = producerId;
                     batchBlock.Post(msg);
-                    Thread.Sleep(100); //preventing overflow
+                    Thread.Sleep(Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"])); //preventing overflow
                 }
             }, _src.Token);
         }
