@@ -54,25 +54,15 @@ namespace Client
             ConcurrentDictionary<string, List<DataMessage>> groupedMessages = new ConcurrentDictionary<string, List<DataMessage>>();
             ExecutionDataflowBlockOptions exdbo = new ExecutionDataflowBlockOptions();
             exdbo.MaxDegreeOfParallelism = SystemSettings.MaxDegreeOfParallelism;
-   
+
             var dataGrouper = new TransformBlock<DataMessage[], List<List<DataMessage>>>(msgList =>
             {
-                foreach (var msg in msgList)
+            //foreach (var msg in msgList)
+                Parallel.ForEach(msgList, (msg) =>
                 {
+                    groupedMessages.AddOrUpdate(msg.MessageTime.ToShortTimeString(), new List<DataMessage>() { msg }, (k, v) => { v.Add(msg); return v; });
+                });
 
-                    if (groupedMessages.ContainsKey(msg.MessageTime.ToShortTimeString()))
-                    {
-                        lock (groupedMessages[msg.MessageTime.ToShortTimeString()])
-                        {
-                            groupedMessages[msg.MessageTime.ToShortTimeString()].Add(msg);
-                        }
-                    }
-                    else
-                    {
-                        groupedMessages.TryAdd(msg.MessageTime.ToShortTimeString(), new List<DataMessage>() { msg });
-                    }
-                }
-                
                 var returnData = groupedMessages.Values.ToList();
                 return returnData;
 
