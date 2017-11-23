@@ -57,7 +57,7 @@ namespace Client
 
             var dataGrouper = new TransformBlock<DataMessage[], List<List<DataMessage>>>(msgList =>
             {
-            //foreach (var msg in msgList)
+            
                 Parallel.ForEach(msgList, (msg) =>
                 {
                     groupedMessages.AddOrUpdate(msg.MessageTime.ToShortTimeString(), new List<DataMessage>() { msg }, (k, v) => { v.Add(msg); return v; });
