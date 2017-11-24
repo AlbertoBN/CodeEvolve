@@ -95,10 +95,6 @@
       <Project>{cbbc1e48-f506-4fd0-97fc-b42f7aaed2b2}</Project>
       <Name>Messages</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\Server\Server\Server.csproj">
-      <Project>{f16c05d8-9136-4afc-a28b-e1af6a838261}</Project>
-      <Name>Server</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
 </Project>

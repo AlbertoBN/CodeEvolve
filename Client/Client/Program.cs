@@ -1,5 +1,5 @@
 ﻿using Messages;
-using Server;
+
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -14,7 +14,6 @@ namespace Client
 {
     static class Program
     {
-        private static List<Producer> _producers;
         /// <summary>
         /// The main entry point for the application.
         /// </summary>
@@ -24,71 +23,8 @@ namespace Client
         
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);
-
-
-            //separated in function to have cleaner code
-            Form1 form = new Form1();
-
-            var dataFlowChain = CreateDataFlowComponentsChain( form);
-            _producers = new List<Producer>();
-
-            for (int i = 0; i <= SystemSettings.NumberOfProducers; i++)
-            {
-                Producer producer = new Producer();
-                
-                producer.Produce(dataFlowChain);
-                _producers.Add(producer);
-            }
-
-            Application.Run(form);
+            Application.Run(new Form1());
 
         }
-
-        private static BatchBlock<DataMessage> CreateDataFlowComponentsChain(Form1 form) 
-        {
-            //Build the blocks for the pipeline
-
-            //First a batch block to receive and push producer data
-            var dataPusher = new BatchBlock<DataMessage>(SystemSettings.BatchBlockBufferSize);
-
-            ConcurrentDictionary<string, List<DataMessage>> groupedMessages = new ConcurrentDictionary<string, List<DataMessage>>();
-            ExecutionDataflowBlockOptions exdbo = new ExecutionDataflowBlockOptions();
-            exdbo.MaxDegreeOfParallelism = SystemSettings.MaxDegreeOfParallelism;
-
-            var dataGrouper = new TransformBlock<DataMessage[], List<List<DataMessage>>>(msgList =>
-            {
-            
-                Parallel.ForEach(msgList, (msg) =>
-                {
-                    groupedMessages.AddOrUpdate(msg.MessageTime.ToShortTimeString(), new List<DataMessage>() { msg }, (k, v) => { v.Add(msg); return v; });
-                });
-
-                var returnData = groupedMessages.Values.ToList();
-                return returnData;
-
-            });
-
-            var finalProcessor = new ActionBlock<List<List<DataMessage>>>(msgLists => {
-
-                
-                foreach (var grp in msgLists)
-                {
-                    Thread.Sleep(1000);
-                    var dataMessage = grp.First();
-                    
-                    string msg = $"{grp.Count} total messages for {dataMessage.MessageTime}";
-                    form.PrintMessage(msg);
-  
-                }
-                msgLists.Clear();
- 
-           }, exdbo);
-
-            dataPusher.LinkTo(dataGrouper);
-            dataGrouper.LinkTo(finalProcessor);
-           
-            return dataPusher;
-        }
-
     }
 }
