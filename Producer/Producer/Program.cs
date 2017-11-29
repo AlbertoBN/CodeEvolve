@@ -1,8 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Server
 {
@@ -10,6 +7,22 @@ namespace Server
     {
         static void Main(string[] args)
         {
+            List<Producer> producers = new List<Producer>();
+
+            for (int i = 0; i < 10; i++)
+            {
+                Producer p = new Producer();
+                p.Produce();
+                producers.Add(p);
+            }
+
+            Console.WriteLine("Press any key to stop producing");
+            Console.ReadKey();
+
+            foreach(var p in producers)
+            {
+                p.StopProducing();
+            }
         }
     }
 }

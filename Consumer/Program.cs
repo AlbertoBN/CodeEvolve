@@ -1,8 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace Consumer
 {
@@ -10,6 +6,13 @@ namespace Consumer
     {
         static void Main(string[] args)
         {
+            Consumer consumer = new Consumer();
+            consumer.Consume();
+
+            Console.WriteLine("Press Any Key to stop consuming");
+            Console.ReadKey();
+
+            consumer.HaltConsumer();
         }
     }
 }
