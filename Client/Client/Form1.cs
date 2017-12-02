@@ -9,9 +9,7 @@ namespace Client
 {
     public partial class Form1 : Form
     {
-        private object _locker;
-        private List<DataMessage> _dataMessageList;
-        ConnectionMultiplexer _redis;
+       ConnectionMultiplexer _redis;
         IDatabase _db;
 
         public Form1()

@@ -14,36 +14,53 @@ namespace Server
     {
         private CancellationTokenSource _src;
 
-        public void Produce()
+        public void Produce(int queueId)
         {
             _src = new CancellationTokenSource();
             Guid producerId = Guid.NewGuid();
             string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTIONSTRING", EnvironmentVariableTarget.Machine);
 
-            int prpducerPauseInMillies = Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"]);
+            int messagesPerBatch = Int32.Parse(ConfigurationManager.AppSettings["MessagesPerBatch"]);
+            int producerPauseInMillies = Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"]);
+            
 
             Task t = Task.Factory.StartNew(() =>
             {
                 Random rand = new Random((int)DateTime.Now.Ticks);
                 ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
                 IDatabase db = redis.GetDatabase();
+                int msgCounter = 0;
+                IBatch batchOp = db.CreateBatch();
                 while (!_src.Token.IsCancellationRequested)
                 {
                     //Now we just push messages in. The pipeline will deal with the numbers
-                    DataMessage msg = new DataMessage();
-                    msg.MessageId = Guid.NewGuid();
-                    msg.MessageData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ";
-                    msg.MessageNumber = rand.Next(int.MinValue, int.MaxValue);
-                    msg.MessageTime = DateTime.Now;
-                    msg.ProducerId = producerId;
+                    DataMessage msg = CreateMessage(producerId, rand.Next(int.MinValue, int.MaxValue));
 
                     string jsonMessage = JsonConvert.SerializeObject(msg);
+                    batchOp.ListLeftPushAsync($"Producer_{queueId}", jsonMessage, When.Always, CommandFlags.FireAndForget);
 
-                    
-                    db.ListLeftPush("DataMessages", jsonMessage, When.Always, CommandFlags.FireAndForget);
-                    Thread.Sleep(Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"])); //preventing overflow
+                    msgCounter++;
+
+                    if (msgCounter == messagesPerBatch)
+                    {
+                        msgCounter = 0;
+                        batchOp.Execute();
+                        
+                        Thread.Sleep(producerPauseInMillies); //preventing overflow
+                    }
                 }
             }, _src.Token);
+        }
+
+        private static DataMessage CreateMessage(Guid producerId, int messageNumber)
+        {
+            DataMessage msg = new DataMessage();
+            msg.MessageId = Guid.NewGuid();
+            msg.MessageData = "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut ";
+            msg.MessageNumber = messageNumber;
+            msg.MessageTime = DateTime.Now;
+            msg.ProducerId = producerId;
+            return msg;
         }
 
         internal void StopProducing()

@@ -12,7 +12,7 @@ namespace Server
             for (int i = 0; i < 10; i++)
             {
                 Producer p = new Producer();
-                p.Produce();
+                p.Produce(i);
                 producers.Add(p);
             }
 
