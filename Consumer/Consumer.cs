@@ -30,7 +30,6 @@ namespace Consumer
             {
                 ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
                 IDatabase db = redis.GetDatabase();
-                BatchBlock<DataMessage> batchblock = CreateDataFlowComponentsChain(db, readMessagePerProducer* numberOfProducers);
 
                 //Cleanup old messages. We need them not
                 for (int i = 0; i < numberOfProducers; i++)
@@ -38,27 +37,66 @@ namespace Consumer
                     db.KeyDelete($"Producer_{i}");
                 }
 
+                ConcurrentDictionary<DateTime, List<DataMessage>> groupedMessages = new ConcurrentDictionary<DateTime, List<DataMessage>>();
+                List<RedisValue> producerData = new List<RedisValue>();
+                List<DateTime> keysToClean = new List<DateTime>();
+
                 while (true)
                 {
                     if (_cancellationTokenSource.Token.IsCancellationRequested)
                         return;
                     
-                    for(int i=0; i< numberOfProducers;i++)
+                    for (int i = 0; i < numberOfProducers; i++)
                     {
-                        RedisValue[] values = db.ListRange($"Producer_{i}",0, readMessagePerProducer-1,CommandFlags.HighPriority);
+                        RedisValue[] values = db.ListRange($"Producer_{i}", 0, readMessagePerProducer - 1, CommandFlags.HighPriority);
                         db.ListTrim($"Producer_{i}", 0, readMessagePerProducer - 1, CommandFlags.HighPriority);
-
-                        if (values!=null && values.Length>0)
+                        if (values != null && values.Length > 0)
                         {
-                            //believe it or not this code is blazing fact
-                            foreach (RedisValue value in values)
-                            {
-                                DataMessage dataMessage = JsonConvert.DeserializeObject<DataMessage>(value.ToString());
-                                batchblock.Post(dataMessage);
-                            }
+                            producerData.AddRange(values);
                         }
                     }
-                    Thread.Sleep(10);
+                    
+                    Parallel.ForEach(producerData, (value) =>
+                    {
+                        DataMessage dataMessage = JsonConvert.DeserializeObject<DataMessage>(value.ToString());
+
+                        groupedMessages.AddOrUpdate(dataMessage.MessageTime, new List<DataMessage>() { dataMessage }, (k, v) =>
+                        {
+                            lock (v) //lock needed becasue List<> is not synchronized. A ConcurrentBag may have done it but it is even more complex
+                            {
+                                v.Add(dataMessage);
+                                return v;
+                            }
+                        });
+                    });
+
+                    producerData.Clear();
+
+                    DateTime anchor = DateTime.Now;
+
+                    foreach (var grp in groupedMessages.Keys)
+                    {
+                        if((anchor-grp).TotalSeconds>60)
+                        {
+                            keysToClean.Add(grp);
+                            continue;
+                        }
+
+                        var dataMessage = groupedMessages[grp].First();
+                        string msg = $"{groupedMessages[grp].Count} total messages for {dataMessage.MessageTime.ToString("HH:mm:ss.fff")}";
+                        db.Publish("GroupedDataMessages", msg, CommandFlags.FireAndForget);
+                    }
+                    
+                    //Messages Cleanup
+                    foreach(var key in keysToClean)
+                    {
+                        List<DataMessage> msgList = new List<DataMessage>();
+                        groupedMessages.TryRemove(key, out msgList);
+                        msgList.Clear();
+                    }
+
+                    keysToClean.Clear();
+                    Thread.Sleep(1000);//long processing
                 }
             }, _cancellationTokenSource.Token);
         }
@@ -66,67 +104,6 @@ namespace Consumer
         public void HaltConsumer()
         {
             _cancellationTokenSource.Cancel();
-        }
-
-        private static BatchBlock<DataMessage> CreateDataFlowComponentsChain(IDatabase redisDb, int batchBlockSize)
-        {
-            //Build the blocks for the pipeline
-
-            //First a batch block to receive and push producer data
-            var dataPusher = new BatchBlock<DataMessage>(batchBlockSize);
-
-            ConcurrentDictionary<string, List<DataMessage>> groupedMessages = new ConcurrentDictionary<string, List<DataMessage>>();
-            var taskSchedulerPair = new ConcurrentExclusiveSchedulerPair();
-
-          
-            var dataGrouper = new TransformBlock<DataMessage[], List<List<DataMessage>>>(msgList =>
-            {
-                Parallel.ForEach(msgList, (msg) =>
-                {
-                    groupedMessages.AddOrUpdate(msg.MessageTime.ToString(), new List<DataMessage>() { msg }, (k, v) =>
-                    {
-                        lock (v) //lock needed becasue List<> is not synchronized. A ConcurrentBag may have done it but it is even more complex
-                        {
-                            v.Add(msg);
-                            return v;
-                        }
-                    });
-                });
-                
-                var returnData = groupedMessages.Values.ToList(); //copy data before cleatring
-                groupedMessages.Clear();
-
-                return returnData;
-
-            }, new ExecutionDataflowBlockOptions
-            {
-                TaskScheduler = taskSchedulerPair.ConcurrentScheduler
-            });
-
-            var finalProcessor = new ActionBlock<List<List<DataMessage>>>(msgLists =>
-            {
-                foreach (var grp in msgLists)
-                {
-                    var dataMessage = grp.First();
-
-                    string msg = $"{grp.Count} total messages for {dataMessage.MessageTime}";
-                    redisDb.Publish("GroupedDataMessages", msg, CommandFlags.FireAndForget);
-                    Thread.Sleep(1000);
-
-                }
-
-                msgLists.Clear();
-                
-
-            }, new ExecutionDataflowBlockOptions
-            {
-                TaskScheduler = taskSchedulerPair.ExclusiveScheduler
-            });
-
-            dataPusher.LinkTo(dataGrouper);
-            dataGrouper.LinkTo(finalProcessor);
-
-            return dataPusher;
         }
     }
 }

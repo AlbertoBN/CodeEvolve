@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using Messages;
 using StackExchange.Redis;
 using Newtonsoft.Json;
+using System.Diagnostics;
 
 namespace Client
 {
@@ -24,20 +25,25 @@ namespace Client
             _redis = ConnectionMultiplexer.Connect(redisConnectionString);
             _db = _redis.GetDatabase();
             ISubscriber sub = _redis.GetSubscriber();
+            
             sub.Subscribe("GroupedDataMessages", (channel, val) =>
             {
                 PrintMessage(val);
 
-            }, CommandFlags.None);
+            }, CommandFlags.HighPriority);
         }
 
         public void PrintMessage(string msg)
         {
+            Stopwatch sw = new Stopwatch();
+            sw.Start();
             this.Invoke((MethodInvoker)(() =>
             {
                 _dataDisplay.Items.Add(msg);
 
             }));
+            sw.Stop();
+            Debug.WriteLine($"{sw.ElapsedMilliseconds}");
 
         }
     }
