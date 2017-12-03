@@ -41,10 +41,8 @@ namespace Consumer
                 List<RedisValue> producerData = new List<RedisValue>();
                 List<DateTime> keysToClean = new List<DateTime>();
 
-                while (true)
+                while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    if (_cancellationTokenSource.Token.IsCancellationRequested)
-                        return;
                     
                     for (int i = 0; i < numberOfProducers; i++)
                     {
