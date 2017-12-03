@@ -38,12 +38,12 @@ namespace Consumer
                 }
 
                 ConcurrentDictionary<DateTime, List<DataMessage>> groupedMessages = new ConcurrentDictionary<DateTime, List<DataMessage>>();
-                List<RedisValue> producerData = new List<RedisValue>();
-                List<DateTime> keysToClean = new List<DateTime>();
 
                 while (!_cancellationTokenSource.Token.IsCancellationRequested)
                 {
-                    
+                    List<RedisValue> producerData = new List<RedisValue>();
+                    List<DateTime> keysToClean = new List<DateTime>();
+
                     for (int i = 0; i < numberOfProducers; i++)
                     {
                         RedisValue[] values = db.ListRange($"Producer_{i}", 0, readMessagePerProducer - 1, CommandFlags.HighPriority);
@@ -53,14 +53,14 @@ namespace Consumer
                             producerData.AddRange(values);
                         }
                     }
-                    
+                   
                     Parallel.ForEach(producerData, (value) =>
                     {
                         DataMessage dataMessage = JsonConvert.DeserializeObject<DataMessage>(value.ToString());
 
                         groupedMessages.AddOrUpdate(dataMessage.MessageTime, new List<DataMessage>() { dataMessage }, (k, v) =>
                         {
-                            lock (v) //lock needed becasue List<> is not synchronized. A ConcurrentBag may have done it but it is even more complex
+                            lock (v) //lock needed beause List<> is not synchronized. A ConcurrentBag may have done it but it is even more complex
                             {
                                 v.Add(dataMessage);
                                 return v;
@@ -69,7 +69,6 @@ namespace Consumer
                     });
 
                     producerData.Clear();
-
                     DateTime anchor = DateTime.Now;
 
                     foreach (var grp in groupedMessages.Keys)
