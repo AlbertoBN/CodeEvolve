@@ -48,6 +48,8 @@ namespace Consumer
                     {
                         RedisValue[] values = db.ListRange($"Producer_{i}", 0, readMessagePerProducer - 1, CommandFlags.HighPriority);
                         db.ListTrim($"Producer_{i}", 0, readMessagePerProducer - 1, CommandFlags.HighPriority);
+
+                   
                         if (values != null && values.Length > 0)
                         {
                             producerData.AddRange(values);
