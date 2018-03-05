@@ -1,11 +1,7 @@
 ﻿using System;
 using System.Windows.Forms;
-using Server;
 using System.Collections.Generic;
-using System.Threading;
 using Messages;
-using System.Linq;
-using System.Diagnostics;
 
 namespace Client
 {
