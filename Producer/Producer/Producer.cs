@@ -21,11 +21,11 @@ namespace Server
             string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTIONSTRING", EnvironmentVariableTarget.Machine);
             int messagesPerBatch = Int32.Parse(ConfigurationManager.AppSettings["MessagesPerBatch"]);
             int producerPauseInMillies = Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"]);
-
+            ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
             Task t = Task.Factory.StartNew(() =>
             {
                 Random rand = new Random((int)DateTime.Now.Ticks);
-                ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
+                
                 IBatch batchOp = redis.GetDatabase().CreateBatch();
                 Guid producerId = Guid.NewGuid();
 
