@@ -18,10 +18,12 @@ namespace Server
         public void Produce(int queueId)
         {
             _src = new CancellationTokenSource();
+
             string redisConnectionString = Environment.GetEnvironmentVariable("REDIS_CONNECTIONSTRING", EnvironmentVariableTarget.Machine);
             int messagesPerBatch = Int32.Parse(ConfigurationManager.AppSettings["MessagesPerBatch"]);
             int producerPauseInMillies = Int32.Parse(ConfigurationManager.AppSettings["ProducerPauseInMillis"]);
             ConnectionMultiplexer redis = ConnectionMultiplexer.Connect(redisConnectionString);
+
             Task t = Task.Factory.StartNew(() =>
             {
                 Random rand = new Random((int)DateTime.Now.Ticks);
